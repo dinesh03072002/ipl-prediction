@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate-tidb.js"
   },
   "keywords": ["ipl", "prediction", "game", "cricket"],
   "author": "",
