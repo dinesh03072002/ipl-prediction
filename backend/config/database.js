@@ -34,7 +34,7 @@ if (isProduction) {
 } else {
   // Development - Local MySQL
   sequelize = new Sequelize(
-    process.env.DB_NAME || 'sql_prediction',
+    process.env.DB_NAME || 'ipl',
     process.env.DB_USER || 'root',
     process.env.DB_PASSWORD || '',
     {

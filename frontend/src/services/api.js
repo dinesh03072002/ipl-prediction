@@ -1,6 +1,22 @@
+// frontend/src/services/api.js
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Auto-detect environment and use appropriate API URL
+const getApiUrl = () => {
+  // Check if we're in production (Vercel deployment)
+  if (process.env.NODE_ENV === 'production') {
+    // Use production backend URL
+    return 'https://ipl-prediction-backend-8i6i.onrender.com/api';
+  }
+  
+  // Development environment - use localhost
+  return 'http://localhost:5000/api';
+};
+
+const API_URL = getApiUrl();
+
+console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔧 API_URL: ${API_URL}`);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -8,7 +24,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false // Set to false since we're not using cookies
+  withCredentials: false
 });
 
 // Request interceptor to add auth token
@@ -18,7 +34,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log('Making request to:', config.url);
     return config;
   },
   (error) => {
@@ -30,7 +45,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminEmail');

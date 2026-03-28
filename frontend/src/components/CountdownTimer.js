@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 const CountdownTimer = ({ targetDate, onComplete }) => {
@@ -43,9 +44,9 @@ const CountdownTimer = ({ targetDate, onComplete }) => {
 
   if (isExpired) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+      <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 md:px-4 md:py-3 rounded-lg text-sm md:text-base">
         <p className="font-bold">Match Started!</p>
-        <p>Predictions are no longer being accepted for this match.</p>
+        <p className="text-xs md:text-sm">Predictions are no longer being accepted for this match.</p>
       </div>
     );
   }
@@ -58,15 +59,15 @@ const CountdownTimer = ({ targetDate, onComplete }) => {
   ];
 
   return (
-    <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg p-4 text-center">
-      <p className="text-sm font-medium mb-2">Time Remaining to Predict</p>
-      <div className="flex justify-center space-x-4">
+    <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg p-3 md:p-4 text-center">
+      <p className="text-xs md:text-sm font-medium mb-2">Time Remaining to Predict</p>
+      <div className="flex justify-center space-x-2 md:space-x-4">
         {timeUnits.map((unit, idx) => (
           <div key={idx} className="text-center">
-            <div className="bg-white bg-opacity-20 rounded-lg px-3 py-2 min-w-[60px]">
-              <span className="text-2xl font-bold">{String(unit.value).padStart(2, '0')}</span>
+            <div className="bg-white bg-opacity-20 rounded-lg px-2 py-1 md:px-3 md:py-2 min-w-[40px] md:min-w-[60px]">
+              <span className="text-xl md:text-2xl font-bold">{String(unit.value).padStart(2, '0')}</span>
             </div>
-            <span className="text-xs mt-1 block">{unit.label}</span>
+            <span className="text-[10px] md:text-xs mt-1 block">{unit.label}</span>
           </div>
         ))}
       </div>

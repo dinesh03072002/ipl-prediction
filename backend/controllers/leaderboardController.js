@@ -1,3 +1,4 @@
+// backend/controllers/leaderboardController.js
 const User = require('../models/User');
 const PredictionAnswer = require('../models/PredictionAnswer');
 const PredictionQuestion = require('../models/PredictionQuestion');
@@ -5,12 +6,11 @@ const MatchResult = require('../models/MatchResult');
 const Match = require('../models/Match');
 const { calculatePoints } = require('../utils/pointsCalculator');
 
-// Get overall leaderboard
+// Get overall leaderboard (all users)
 exports.getLeaderboard = async (req, res) => {
   try {
     const leaderboard = await User.findAll({
       order: [['totalPoints', 'DESC']],
-      limit: 100,
       attributes: ['id', 'name', 'totalPoints']
     });
     
@@ -37,7 +37,6 @@ exports.getMatchLeaderboard = async (req, res) => {
     const questionIds = questions.map(q => q.id);
     
     if (questionIds.length === 0) {
-      console.log('No questions found for match:', matchId);
       return res.json([]);
     }
     
@@ -51,19 +50,20 @@ exports.getMatchLeaderboard = async (req, res) => {
     // Get all results for these questions
     const results = await MatchResult.findAll({
       where: {
-        questionId: questionIds
+        questionId: questionIds,
+        matchId: matchId
       }
+    });
+    
+    // Create maps for quick lookup
+    const resultsMap = {};
+    results.forEach(result => {
+      resultsMap[result.questionId] = result.correctAnswer;
     });
     
     // Get all questions with their details
     const questionsWithDetails = await PredictionQuestion.findAll({
       where: { id: questionIds }
-    });
-    
-    // Create a map for quick lookup
-    const resultsMap = {};
-    results.forEach(result => {
-      resultsMap[result.questionId] = result.correctAnswer;
     });
     
     const questionsMap = {};
@@ -115,7 +115,7 @@ exports.getMatchLeaderboard = async (req, res) => {
       points: userPoints[user.id] || 0
     })).sort((a, b) => b.points - a.points);
     
-    console.log('Match leaderboard:', matchLeaderboard);
+    console.log('Match leaderboard:', matchLeaderboard.length, 'users');
     res.json(matchLeaderboard);
   } catch (error) {
     console.error('Error getting match leaderboard:', error);
@@ -147,7 +147,8 @@ exports.getUserMatchPoints = async (req, res) => {
     // Get results
     const results = await MatchResult.findAll({
       where: {
-        questionId: questionIds
+        questionId: questionIds,
+        matchId: parseInt(matchId)
       }
     });
     
@@ -210,6 +211,39 @@ exports.getUserMatchPoints = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting user match points:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Debug endpoint to check user points
+exports.debugUserPoints = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'name', 'totalPoints']
+    });
+    
+    const answers = await PredictionAnswer.findAll({
+      include: [{
+        model: PredictionQuestion,
+        as: 'question'
+      }]
+    });
+    
+    const results = await MatchResult.findAll();
+    
+    res.json({
+      users,
+      totalAnswers: answers.length,
+      totalResults: results.length,
+      sampleAnswers: answers.slice(0, 5).map(a => ({
+        userId: a.userId,
+        questionId: a.questionId,
+        answer: a.answer
+      })),
+      sampleResults: results.slice(0, 5)
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
     res.status(500).json({ error: error.message });
   }
 };

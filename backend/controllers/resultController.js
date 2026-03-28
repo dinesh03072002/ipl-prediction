@@ -31,7 +31,7 @@ exports.updateResults = async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
     
-    console.log('Match found:', match.team1, 'vs', match.team2);
+    console.log('Match found:', match.team1, 'vs', match.team2, 'Status:', match.status);
     
     // Delete existing results for this match to avoid duplicates
     await MatchResult.destroy({
@@ -59,11 +59,11 @@ exports.updateResults = async (req, res) => {
       
       console.log(`Question found: ${question.questionText}`);
       
-      // Store the result - store as string without extra JSON parsing
+      // Store the result
       const newResult = await MatchResult.create({
         questionId: result.questionId,
         matchId: matchId,
-        correctAnswer: String(result.correctAnswer) // Store as string
+        correctAnswer: String(result.correctAnswer)
       });
       
       updatedCount++;
@@ -72,12 +72,8 @@ exports.updateResults = async (req, res) => {
     
     console.log(`✅ Updated ${updatedCount} results for match ${matchId}`);
     
-    // Update match status to completed if not already
-    if (match.status !== 'completed') {
-      match.status = 'completed';
-      await match.save();
-      console.log(`✅ Match ${matchId} marked as completed`);
-    }
+    // IMPORTANT: DO NOT automatically change match status to completed
+    // The admin should manually mark it as completed from Matches tab
     
     // Recalculate points for all users
     await recalculateAllUserPoints();
@@ -86,7 +82,7 @@ exports.updateResults = async (req, res) => {
       message: 'Results updated successfully', 
       updatedCount,
       matchId,
-      matchStatus: match.status
+      matchStatus: match.status // Return current status (should still be 'upcoming' or 'live')
     });
   } catch (error) {
     console.error('❌ Error updating results:', error);
@@ -94,22 +90,18 @@ exports.updateResults = async (req, res) => {
   }
 };
 
-// Get results for a match - FIXED VERSION
+// Get results for a match
 exports.getMatchResults = async (req, res) => {
   try {
     const { matchId } = req.params;
     
-    console.log('=================================');
-    console.log('GET RESULTS CALLED for match:', matchId);
-    console.log('=================================');
+    console.log('Getting results for match:', matchId);
     
     // Get all questions for this match
     const questions = await PredictionQuestion.findAll({
       where: { matchId: parseInt(matchId) },
       attributes: ['id', 'questionText', 'type', 'points']
     });
-    
-    console.log(`Found ${questions.length} questions for match ${matchId}`);
     
     // Get results for these questions
     const results = await MatchResult.findAll({
@@ -118,43 +110,25 @@ exports.getMatchResults = async (req, res) => {
       }
     });
     
-    console.log(`Found ${results.length} results in match_results table`);
-    
-    if (results.length > 0) {
-      console.log('Results data:', results.map(r => ({
-        id: r.id,
-        questionId: r.questionId,
-        matchId: r.matchId,
-        correctAnswer: r.correctAnswer
-      })));
-    }
-    
     // Create a map for quick lookup
     const resultsMap = {};
     results.forEach(result => {
       resultsMap[result.questionId] = result.correctAnswer;
     });
     
-    // Format results with proper display based on question type
+    // Format results
     const formattedResults = questions.map(question => {
       const rawAnswer = resultsMap[question.id];
       let displayAnswer = null;
       
       if (rawAnswer) {
-        // For NUMBER type, just show the number
         if (question.type === 'NUMBER') {
           displayAnswer = rawAnswer;
-        }
-        // For MCQ, show the answer as is
-        else if (question.type === 'MCQ') {
+        } else if (question.type === 'MCQ') {
           displayAnswer = rawAnswer;
-        }
-        // For BOOLEAN, format as Yes/No
-        else if (question.type === 'BOOLEAN') {
+        } else if (question.type === 'BOOLEAN') {
           displayAnswer = rawAnswer === 'yes' ? 'Yes' : 'No';
-        }
-        // For RANGE, format as min-max
-        else if (question.type === 'RANGE') {
+        } else if (question.type === 'RANGE') {
           if (rawAnswer.includes('-')) {
             displayAnswer = rawAnswer;
           } else {
@@ -169,14 +143,12 @@ exports.getMatchResults = async (req, res) => {
               displayAnswer = rawAnswer;
             }
           }
-        }
-        // For TEXT, show as is
-        else {
+        } else {
           displayAnswer = rawAnswer;
         }
       }
       
-      const result = {
+      return {
         questionId: question.id,
         questionText: question.questionText,
         type: question.type,
@@ -185,16 +157,11 @@ exports.getMatchResults = async (req, res) => {
         rawAnswer: rawAnswer,
         hasResult: !!rawAnswer
       };
-      
-      console.log(`Question ${question.id} (${question.type}): hasResult=${result.hasResult}, answer=${result.correctAnswer}`);
-      
-      return result;
     });
     
-    console.log('Sending formatted results');
     res.json(formattedResults);
   } catch (error) {
-    console.error('❌ Error getting match results:', error);
+    console.error('Error getting match results:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -218,7 +185,12 @@ async function recalculateAllUserPoints() {
         
         if (result && question) {
           const userAnswer = JSON.parse(answer.answer);
-          const correctAnswer = result.correctAnswer;
+          let correctAnswer;
+          try {
+            correctAnswer = JSON.parse(result.correctAnswer);
+          } catch (e) {
+            correctAnswer = result.correctAnswer;
+          }
           
           const points = calculatePoints(question, userAnswer, correctAnswer);
           totalPoints += points;
@@ -227,20 +199,18 @@ async function recalculateAllUserPoints() {
       
       user.totalPoints = totalPoints;
       await user.save();
+      console.log(`User ${user.name}: ${totalPoints} points`);
     }
     
     console.log('✅ Points recalculated for all users');
   } catch (error) {
-    console.error('❌ Error recalculating points:', error);
+    console.error('Error recalculating points:', error);
   }
 }
 
-// Debug endpoint to check raw data
 exports.debugResults = async (req, res) => {
   try {
     const { matchId } = req.params;
-    console.log('Debug endpoint - Match ID:', matchId);
-    
     const results = await MatchResult.findAll({
       where: { matchId: parseInt(matchId) },
       raw: true
