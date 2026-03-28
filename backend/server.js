@@ -1,4 +1,4 @@
-// backend/server.js (CORS configuration part)
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
@@ -22,7 +22,7 @@ const leaderboardRoutes = require('./routes/leaderboardRoutes');
 
 const app = express();
 
-// CORS Configuration - Allow both localhost and production
+// CORS Configuration
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -32,21 +32,12 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
-// Configure CORS
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // In development, allow all origins for easier testing
+    if (!origin) return callback(null, true);
     if (process.env.NODE_ENV !== 'production') {
-      console.log('⚠️ Development mode: Allowing origin:', origin);
       return callback(null, true);
     }
-    
-    // In production, check against allowed origins
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -56,14 +47,12 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  optionsSuccessStatus: 200
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
 app.use(express.json());
 
-// Set up all models in an object
+// Set up associations
 const models = {
   Admin,
   User,
@@ -73,14 +62,13 @@ const models = {
   MatchResult
 };
 
-// Apply associations
 Object.keys(models).forEach(modelName => {
   if (models[modelName].associate) {
     models[modelName].associate(models);
   }
 });
 
-// Routes
+// IMPORTANT: Routes must be registered BEFORE the catch-all
 app.use('/api/admin', authRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/questions', questionRoutes);
@@ -88,37 +76,56 @@ app.use('/api/predictions', predictionRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 
-// Health check endpoint
+// Health check (no /api prefix for easier testing)
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString(),
+    routes: ['/api/matches', '/api/admin/login', '/api/leaderboard']
   });
 });
 
-// CORS test endpoint
-app.get('/api/cors-test', (req, res) => {
-  res.json({ 
-    message: 'CORS is working!', 
-    origin: req.headers.origin,
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString()
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working!' });
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.originalUrl,
+    method: req.method,
+    availableEndpoints: [
+      'GET /health',
+      'GET /api/test',
+      'GET /api/matches',
+      'POST /api/matches',
+      'PUT /api/matches/:id/status',
+      'GET /api/questions/match/:matchId',
+      'POST /api/questions',
+      'POST /api/predictions',
+      'GET /api/predictions/user/:userId',
+      'POST /api/results',
+      'GET /api/results/match/:matchId',
+      'GET /api/leaderboard',
+      'GET /api/leaderboard/match/:matchId',
+      'POST /api/admin/login'
+    ]
   });
 });
 
-// Database connection and server start
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
     await sequelize.authenticate();
-    console.log(`✅ Database connection established successfully. (${process.env.NODE_ENV || 'development'} mode)`);
+    console.log(`✅ Database connection established. (${process.env.NODE_ENV || 'development'})`);
     
     await sequelize.sync({ alter: false });
-    console.log('✅ Database synced successfully.');
+    console.log('✅ Database synced.');
     
-    // Create default admin if not exists
     const adminExists = await Admin.findOne();
     if (!adminExists) {
       await Admin.create({
@@ -131,12 +138,12 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 CORS: ${process.env.NODE_ENV === 'production' ? 'Restricted' : 'Open'}`);
-      console.log(`📝 Admin Login: http://localhost:${PORT}/api/admin/login`);
-      console.log(`🎮 Frontend: ${process.env.FRONTEND_URL || 'http://localhost:3000'}\n`);
+      console.log(`📝 Test API: http://localhost:${PORT}/api/test`);
+      console.log(`🏏 Matches API: http://localhost:${PORT}/api/matches`);
+      console.log(`🔐 Admin Login: http://localhost:${PORT}/api/admin/login\n`);
     });
   } catch (error) {
-    console.error('❌ Unable to start server:', error);
+    console.error('❌ Server error:', error);
     process.exit(1);
   }
 }
