@@ -21,11 +21,37 @@ const leaderboardRoutes = require('./routes/leaderboardRoutes');
 
 const app = express();
 
-// Middleware
+// CORS Configuration - FIX THIS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://ipl-prediction-rho.vercel.app',
+  'https://ipl-prediction.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 200
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // Set up all models in an object
@@ -58,6 +84,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'CORS is working!' });
+});
+
 // Database connection and server start
 const PORT = process.env.PORT || 5000;
 
@@ -65,7 +96,6 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
-    
     
     await sequelize.sync({ alter: false });
     console.log('✅ Database synced successfully.');
@@ -82,8 +112,7 @@ async function startServer() {
     
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running on port ${PORT}`);
-      console.log(`🔗 API URL: ${process.env.API_URL || `http://localhost:${PORT}`}`);
-      console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}\n`);
+      console.log(`🌐 Allowed origins:`, allowedOrigins);
     });
   } catch (error) {
     console.error('❌ Unable to start server:', error);

@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Use environment variable for API URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
@@ -9,6 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: false // Set to false since we're not using cookies
 });
 
 // Request interceptor to add auth token
@@ -18,6 +18,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('Making request to:', config.url);
     return config;
   },
   (error) => {
@@ -29,10 +30,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('API Error:', error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminEmail');
-      if (!window.location.pathname.includes('/admin/login')) {
+      if (window.location.pathname.startsWith('/admin')) {
         window.location.href = '/admin/login';
       }
     }
