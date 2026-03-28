@@ -144,10 +144,6 @@ const PredictionForm = () => {
         answers: formattedAnswers
       });
       
-      const response = await predictionAPI.submit({
-        userName: userName.trim(),
-        answers: formattedAnswers
-      });
       
       // Save name to localStorage
       localStorage.setItem('userName', userName.trim());

@@ -33,12 +33,7 @@ const Leaderboard = () => {
     return null;
   };
 
-  const getRankBadge = (rank) => {
-    if (rank === 0) return 'bg-yellow-100 text-yellow-800';
-    if (rank === 1) return 'bg-gray-100 text-gray-800';
-    if (rank === 2) return 'bg-orange-100 text-orange-800';
-    return 'bg-blue-100 text-blue-800';
-  };
+ 
 
   if (loading) {
     return (

@@ -11,7 +11,8 @@ const MatchLeaderboard = () => {
   const [match, setMatch] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeLeaderboard, setActiveLeaderboard] = useState('match');
+  // Remove unused activeLeaderboard state
+  // const [activeLeaderboard, setActiveLeaderboard] = useState('match');
 
   const loadData = useCallback(async () => {
     try {

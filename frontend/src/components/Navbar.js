@@ -1,5 +1,4 @@
 // frontend/src/components/Navbar.js
-
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -49,9 +48,7 @@ const Navbar = () => {
                 onClick={() => {
                   localStorage.removeItem('adminToken');
                   localStorage.removeItem('adminEmail');
-                  setIsAdmin(false);
-                  navigate('/');
-                  window.location.reload();
+                  window.location.href = '/admin/login';
                 }}
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors text-sm"
               >
